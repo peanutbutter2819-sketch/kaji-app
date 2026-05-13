@@ -1,12 +1,230 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>家事分担リスト</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>家事分担リスト</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #FAFAF8; }
+    button { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    const CATEGORIES = ["料理", "掃除", "洗濯", "その他"];
+    const CAT = {
+      料理: { bg: "#FFF3E0", accent: "#F57C00", icon: "🍳" },
+      掃除: { bg: "#E8F5E9", accent: "#388E3C", icon: "🧹" },
+      洗濯: { bg: "#E3F2FD", accent: "#1976D2", icon: "👕" },
+      その他: { bg: "#F5F5F5", accent: "#616161", icon: "📦" },
+    };
+    const OWNERS = ["自分", "夫", "子ども①", "子ども②", "みんな"];
+    const OWNER_COLORS = {
+      自分: "#4CAF50", 夫: "#2196F3", "子ども①": "#FF9800", "子ども②": "#E91E63", みんな: "#009688",
+    };
+
+    const DEMO_TASKS = [
+      { id: 1, category: "料理", task: "朝ごはん用意", time: 30, owners: [], wantHelp: true, memo: [] },
+      { id: 2, category: "料理", task: "献立を考えて買い物", time: 40, owners: [], wantHelp: true, memo: [] },
+      { id: 3, category: "料理", task: "食器洗う", time: 20, owners: [], wantHelp: true, memo: [] },
+      { id: 4, category: "掃除", task: "掃除機かける", time: 10, owners: [], wantHelp: false, memo: [] },
+      { id: 5, category: "掃除", task: "お風呂の排水溝の髪の毛を取る", time: 3, owners: [], wantHelp: true, memo: ["お風呂から出る前に集める", "ゴミ箱へ捨てる"] },
+      { id: 6, category: "掃除", task: "ゴミを出す", time: 5, owners: [], wantHelp: false, memo: [] },
+      { id: 7, category: "洗濯", task: "洗濯干す", time: 15, owners: [], wantHelp: true, memo: [] },
+      { id: 8, category: "洗濯", task: "洗濯物たたむ", time: 20, owners: [], wantHelp: true, memo: [] },
+      { id: 9, category: "その他", task: "トイレットペーパー補充", time: 1, owners: [], wantHelp: true, memo: ["残り2つになったら補充してください"] },
+      { id: 10, category: "その他", task: "郵便物の仕分け", time: 2, owners: [], wantHelp: false, memo: [] },
+    ];
+
+    function KajiDemo() {
+      const [tasks, setTasks] = useState(DEMO_TASKS);
+      const [activeTab, setActiveTab] = useState("list");
+      const [activeCategory, setActiveCategory] = useState("全て");
+      const [expandedId, setExpandedId] = useState(null);
+
+      const toggleOwner = (id, owner) => {
+        setTasks(tasks.map(t => {
+          if (t.id !== id) return t;
+          const owners = t.owners.includes(owner)
+            ? t.owners.filter(o => o !== owner)
+            : [...t.owners, owner];
+          return { ...t, owners };
+        }));
+      };
+
+      const filtered = activeCategory === "全て" ? tasks : tasks.filter(t => t.category === activeCategory);
+      const totalMin = tasks.reduce((s, t) => s + t.time, 0);
+      const helpTasks = tasks.filter(t => t.wantHelp);
+      const ownerSummary = OWNERS.map(o => ({
+        owner: o,
+        tasks: tasks.filter(t => t.owners.includes(o)),
+        minutes: tasks.filter(t => t.owners.includes(o)).reduce((s, t) => s + t.time, 0),
+      })).filter(o => o.tasks.length > 0);
+
+      return (
+        <div style={{ fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif", maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#FAFAF8" }}>
+
+          <div style={{ background: "linear-gradient(135deg,#2D6A4F 0%,#40916C 100%)", padding: "16px 16px 14px", color: "white" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 2, marginBottom: 2 }}>🍀 KAJI SHARE</div>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>家事分担リスト</div>
+              </div>
+              <div style={{ background: "rgba(255,80,80,0.85)", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700, letterSpacing: 1, marginTop: 4 }}>DEMO</div>
+            </div>
+            <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "8px 12px", marginTop: 10, display: "flex", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 10, opacity: 0.8 }}>月間合計時間</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{Math.floor(totalMin/60)}<span style={{fontSize:12}}>時間</span>{totalMin%60}<span style={{fontSize:12}}>分</span></div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 10, opacity: 0.8 }}>タスク数</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{tasks.length}<span style={{fontSize:12}}>件</span></div>
+              </div>
+            </div>
+            <div style={{ marginTop: 6, fontSize: 10, opacity: 0.6, textAlign: "center" }}>※ これはデモ用サンプルです</div>
+          </div>
+
+          <div style={{ display: "flex", background: "white", borderBottom: "1px solid #E8E8E8", position: "sticky", top: 0, zIndex: 10 }}>
+            {[{ key: "list", label: "📋 リスト" }, { key: "summary", label: "👥 担当別" }, { key: "help", label: "🤝 お願い" }].map(tab => (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+                flex: 1, padding: "11px 4px", border: "none", background: "none", fontSize: 12,
+                fontWeight: activeTab === tab.key ? 700 : 400,
+                color: activeTab === tab.key ? "#2D6A4F" : "#999",
+                borderBottom: activeTab === tab.key ? "2px solid #2D6A4F" : "2px solid transparent",
+                cursor: "pointer"
+              }}>{tab.label}</button>
+            ))}
+          </div>
+
+          {activeTab === "list" && (
+            <div style={{ padding: "10px 12px 80px" }}>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 10 }}>
+                {["全て", ...CATEGORIES].map(cat => (
+                  <button key={cat} onClick={() => setActiveCategory(cat)} style={{
+                    padding: "5px 12px", borderRadius: 20, border: "none",
+                    background: activeCategory === cat ? "#2D6A4F" : "#F0F0F0",
+                    color: activeCategory === cat ? "white" : "#666",
+                    fontSize: 11, fontWeight: activeCategory === cat ? 700 : 400,
+                    whiteSpace: "nowrap", cursor: "pointer"
+                  }}>{cat === "全て" ? "全て" : `${CAT[cat].icon} ${cat}`}</button>
+                ))}
+              </div>
+              {filtered.map(task => (
+                <div key={task.id} style={{ background: "white", borderRadius: 12, marginBottom: 8, borderLeft: `4px solid ${CAT[task.category].accent}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                  <div style={{ padding: "10px 12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: 10, background: CAT[task.category].bg, color: CAT[task.category].accent, padding: "2px 6px", borderRadius: 4, fontWeight: 600 }}>
+                          {CAT[task.category].icon} {task.category}
+                        </span>
+                        <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4, color: "#333" }}>{task.task}</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 8 }}>
+                        <div style={{ fontSize: 12, color: "#999" }}>{task.time}分</div>
+                        {task.memo.length > 0 && (
+                          <button onClick={() => setExpandedId(expandedId === task.id ? null : task.id)} style={{
+                            width: 24, height: 24, borderRadius: "50%", border: "1.5px solid #E0E0E0",
+                            background: expandedId === task.id ? "#2D6A4F" : "white",
+                            color: expandedId === task.id ? "white" : "#999",
+                            fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
+                          }}>{expandedId === task.id ? "▲" : "▼"}</button>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {OWNERS.map(owner => (
+                        <button key={owner} onClick={() => toggleOwner(task.id, owner)} style={{
+                          padding: "3px 8px", borderRadius: 12,
+                          border: `1.5px solid ${task.owners.includes(owner) ? OWNER_COLORS[owner] : "#E0E0E0"}`,
+                          background: task.owners.includes(owner) ? OWNER_COLORS[owner] : "white",
+                          color: task.owners.includes(owner) ? "white" : "#999",
+                          fontSize: 11, fontWeight: task.owners.includes(owner) ? 700 : 400, cursor: "pointer"
+                        }}>{owner}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {expandedId === task.id && task.memo.length > 0 && (
+                    <div style={{ background: "#F8FBF9", borderTop: "1px dashed #B7E4C7", padding: "8px 12px" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#2D6A4F", marginBottom: 4 }}>📋 やり方メモ</div>
+                      {task.memo.map((m, i) => (
+                        <div key={i} style={{ display: "flex", gap: 6, fontSize: 12, color: "#555", marginBottom: 2 }}>
+                          <span style={{ color: "#40916C", fontWeight: 700 }}>{i+1}.</span><span>{m}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === "summary" && (
+            <div style={{ padding: "10px 12px 80px" }}>
+              {ownerSummary.length === 0 ? (
+                <div style={{ textAlign: "center", color: "#BDBDBD", padding: "40px 0", fontSize: 14 }}>リストタブで担当者を設定してみてね🌿</div>
+              ) : ownerSummary.map(({ owner, tasks: ot, minutes }) => (
+                <div key={owner} style={{ background: "white", borderRadius: 12, padding: "12px", marginBottom: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: OWNER_COLORS[owner], display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 12 }}>{owner[0]}</div>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{owner}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: OWNER_COLORS[owner] }}>{Math.floor(minutes/60) > 0 ? `${Math.floor(minutes/60)}時間` : ""}{minutes%60}分</div>
+                      <div style={{ fontSize: 11, color: "#999" }}>{ot.length}タスク</div>
+                    </div>
+                  </div>
+                  {ot.map(t => (
+                    <div key={t.id} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderTop: "1px solid #F5F5F5" }}>
+                      <span style={{ fontSize: 13, color: "#555" }}>{CAT[t.category].icon} {t.task}</span>
+                      <span style={{ fontSize: 12, color: "#999" }}>{t.time}分</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === "help" && (
+            <div style={{ padding: "10px 12px 80px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1976D2", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                🤝 お願いしたいこと
+                <span style={{ background: "#E3F2FD", color: "#1976D2", borderRadius: 10, padding: "1px 8px", fontSize: 12 }}>{helpTasks.length}件</span>
+              </div>
+              {helpTasks.map(t => (
+                <div key={t.id} style={{ background: "white", borderRadius: 10, padding: "10px 12px", marginBottom: 8, borderLeft: "3px solid #1976D2", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <span style={{ fontSize: 13, color: "#333" }}>{CAT[t.category].icon} {t.task}</span>
+                    {t.owners.length > 0 && (
+                      <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
+                        {t.owners.map(o => (
+                          <span key={o} style={{ fontSize: 11, background: OWNER_COLORS[o], color: "white", borderRadius: 8, padding: "1px 6px" }}>{o}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 12, color: "#999" }}>{t.time}分</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "white", borderTop: "1px solid #E8E8E8", padding: "8px 16px 12px", textAlign: "center", zIndex: 10 }}>
+            <div style={{ fontSize: 10, color: "#BDBDBD" }}>👨‍👩‍👧‍👦 家族みんなで、ラクに・仲良く｜※デモ版</div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<KajiDemo />);
+  </script>
+</body>
 </html>
